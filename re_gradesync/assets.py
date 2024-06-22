@@ -1,5 +1,35 @@
 from dagster import AssetKey, SourceAsset, asset
 import polars as pl
+import pandas as pd
+from dagster_deltalake import LocalConfig
+from dagster_deltalake_pandas import DeltaLakePandasIOManager
+from dagster import Definitions
+
+# https://docs.dagster.io/integrations/deltalake/using-deltalake-with-dagster
+@asset
+def iris_dataset() -> pd.DataFrame:
+    return pd.read_csv(
+        "https://docs.dagster.io/assets/iris.csv",
+        names=[
+            "sepal_length_cm",
+            "sepal_width_cm",
+            "petal_length_cm",
+            "petal_width_cm",
+            "species",
+        ],
+    )
+
+defs = Definitions(
+    assets=[iris_dataset],
+    resources={
+        "io_manager": DeltaLakePandasIOManager(
+            root_uri="path/to/deltalake",  # required
+            storage_options=LocalConfig(),  # required
+            schema="iris",  # optional, defaults to "public"
+        )
+    },
+)
+
 
 TEST_USERS_DATA = {
     'd0' : [
@@ -62,4 +92,9 @@ def m365_assignments() -> pl.DataFrame:
 @asset(group_name='gradesync')
 def m365_submissions() -> pl.DataFrame:
     df = pl.DataFrame(TEST_SUBMISSIONS_DATA['d0'])
+    return df
+
+@asset(group_name='uls')
+def uls_users(m365_users: pl.DataFrame) -> pl.DataFrame:
+    df = m365_users.rename({'fname': 'first_name'})
     return df

@@ -6,7 +6,10 @@ setup(
     install_requires=[
         "dagster",
         "dagster-cloud",
-        "polars"
+        "polars",
+        "pandas",
+        "dagster-deltalake",
+        "dagster-deltalake-pandas"
     ],
     extras_require={"dev": ["dagster-webserver", "pytest"]},
 )

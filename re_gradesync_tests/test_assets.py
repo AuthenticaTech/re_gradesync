@@ -1,4 +1,4 @@
-from re_gradesync.assets import m365_users, m365_assignments, m365_submissions
+from re_gradesync.assets import m365_users, m365_assignments, m365_submissions, uls_users
 
 def test_m365_users():
     df_users = m365_users()
@@ -11,3 +11,8 @@ def test_m365_assignments():
 def test_m365_submissions():
     df_submissions = m365_submissions()
     assert df_submissions is not None
+
+def test_uls_users():
+    df_users = m365_users()
+    df = uls_users(df_users)
+    assert df is not None
