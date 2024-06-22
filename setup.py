@@ -5,7 +5,8 @@ setup(
     packages=find_packages(exclude=["re_gradesync_tests"]),
     install_requires=[
         "dagster",
-        "dagster-cloud"
+        "dagster-cloud",
+        "polars"
     ],
     extras_require={"dev": ["dagster-webserver", "pytest"]},
 )
