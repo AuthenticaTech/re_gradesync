@@ -9,7 +9,8 @@ setup(
         "polars",
         "pandas",
         "dagster-deltalake",
-        "dagster-deltalake-pandas"
+        "dagster-deltalake-pandas",
+        "dagster-pandera"
     ],
     extras_require={"dev": ["dagster-webserver", "pytest"]},
 )

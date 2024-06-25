@@ -1,34 +1,10 @@
-from dagster import AssetKey, SourceAsset, asset
+from dagster import AssetExecutionContext, AssetKey, SourceAsset, asset, DailyPartitionsDefinition
 import polars as pl
 import pandas as pd
 from dagster_deltalake import LocalConfig
 from dagster_deltalake_pandas import DeltaLakePandasIOManager
 from dagster import Definitions
 
-# https://docs.dagster.io/integrations/deltalake/using-deltalake-with-dagster
-@asset
-def iris_dataset() -> pd.DataFrame:
-    return pd.read_csv(
-        "https://docs.dagster.io/assets/iris.csv",
-        names=[
-            "sepal_length_cm",
-            "sepal_width_cm",
-            "petal_length_cm",
-            "petal_width_cm",
-            "species",
-        ],
-    )
-
-defs = Definitions(
-    assets=[iris_dataset],
-    resources={
-        "io_manager": DeltaLakePandasIOManager(
-            root_uri="path/to/deltalake",  # required
-            storage_options=LocalConfig(),  # required
-            schema="iris",  # optional, defaults to "public"
-        )
-    },
-)
 
 
 TEST_USERS_DATA = {
@@ -65,36 +41,59 @@ TEST_USERS_DATA = {
 
 TEST_ASSIGNMENTS_DATA = {
     'd0' : [
-        {'assignment_id': 'a1', 'class_id': 'c1', 'name': 'math sheet1'},
-        {'assignment_id': 'a2', 'class_id': 'c1', 'name': 'math sheet2'},
+        {'assignment_id': 'a1', 'class_id': 'c1', 'name': 'math sheet1', 'date': '2024-02-20'},
+        {'assignment_id': 'a2', 'class_id': 'c1', 'name': 'math sheet2', 'date': '2024-02-20'},
     ],
 }
 
 TEST_SUBMISSIONS_DATA = {
     'd0' : [
-        {'submission_id': 's1', 'assignment_id': 'a1', 'user_id': 'u1', 'score': 92},
-        {'submission_id': 's2', 'assignment_id': 'a1', 'user_id': 'u2', 'score': 90},
-        {'submission_id': 's3', 'assignment_id': 'a1', 'user_id': 'u3', 'score': 81},
+        {'submission_id': 's1', 'assignment_id': 'a1', 'user_id': 'u1', 'score': 92, 'date': '2024-02-20'},
+        {'submission_id': 's2', 'assignment_id': 'a1', 'user_id': 'u2', 'score': 90, 'date': '2024-02-20'},
+        {'submission_id': 's3', 'assignment_id': 'a1', 'user_id': 'u3', 'score': 81, 'date': '2024-02-20'},
     ],
 }
 
+# https://docs.dagster.io/integrations/deltalake/using-deltalake-with-dagster
+@asset(key_prefix=['iris'])
+def iris_dataset() -> pd.DataFrame:
+    return pd.read_csv(
+        "https://docs.dagster.io/assets/iris.csv",
+        names=[
+            "sepal_length_cm",
+            "sepal_width_cm",
+            "petal_length_cm",
+            "petal_width_cm",
+            "species",
+        ],
+    )
 
-@asset(group_name='gradesync')
-def m365_users() -> pl.DataFrame:
+@asset(
+        group_name='gradesync',
+        #asset_key='user_id',
+        # partitions_def=DailyPartitionsDefinition(start_date='2000-01-01'),
+        # metadata={'partition_expr': 'date'} 
+      )
+def m365_users(context: AssetExecutionContext) -> pd.DataFrame:
     df = pl.DataFrame(TEST_USERS_DATA['d0'])
-    return df
+    context.log.info('-------> m365_users asset called')
+    return df.to_pandas()
 
+# @asset(group_name='gradesync', key_prefix=['assignments'])
 @asset(group_name='gradesync')
-def m365_assignments() -> pl.DataFrame:
+def m365_assignments() -> pd.DataFrame:
     df = pl.DataFrame(TEST_ASSIGNMENTS_DATA['d0'])
-    return df
+    return df.to_pandas()
 
+# @asset(group_name='gradesync', key_prefix=['submissions'])
 @asset(group_name='gradesync')
-def m365_submissions() -> pl.DataFrame:
+def m365_submissions() -> pd.DataFrame:
     df = pl.DataFrame(TEST_SUBMISSIONS_DATA['d0'])
-    return df
+    return df.to_pandas()
 
+# @asset(group_name='uls', key_prefix=['ulsusers'])
 @asset(group_name='uls')
-def uls_users(m365_users: pl.DataFrame) -> pl.DataFrame:
-    df = m365_users.rename({'fname': 'first_name'})
-    return df
+def uls_users(m365_users: pd.DataFrame) -> pd.DataFrame:
+    df_users = pl.from_pandas(m365_users)
+    df_users = df_users.rename({'fname': 'first_name'})
+    return df_users.to_pandas()
